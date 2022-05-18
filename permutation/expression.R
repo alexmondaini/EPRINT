@@ -7,7 +7,7 @@ library(plotly)
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 library(hrbrthemes)
 ####
-setwd('/eclip_bed/files/')
+setwd('/my_dir/R_eprint_project/files/')
 
 # Read eclip
 temp = list.files(pattern="*.bed.gz")
@@ -65,6 +65,15 @@ pk.df[,geneStrand := fcase(geneStrand==1,'+',
 pk.df[,count_median:=.(rowMedians(as.matrix(.SD))),.SDcols=c("sample5","sample6","sample7","sample8")]
 qt = pk.df[,quantile(count_median)]
 qt
+
+pk.df[,qt:=
+           fcase(count_median>=qt[1] & count_median<=qt[2],'A',
+                 count_median>qt[2] & count_median<=qt[3],'B',
+                 count_median>qt[3] & count_median<=qt[4],'C',
+                 count_median>qt[4],'D'
+           )
+]
+
 # frequency of quantiles
 fq = pk.df[,.(.N),by=qt]
 frq = fq[,N]

@@ -8,7 +8,7 @@ library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 library(hrbrthemes)
 ####
 #Read all Eclip files
-setwd('/eclip_bed/files')
+setwd('/my_dir/R_eprint_project/files/')
 temp = list.files(pattern="*.bed.gz")
 myfiles = lapply(temp, function(x) fread(x,
                                          sep="\t",
@@ -95,7 +95,7 @@ p = ggplot(per,aes(x=accession,y=percent,colour=accession)) +
         plot.title = element_text(hjust = 0.5)) +
   ggtitle("Plot of % coverage of each accession \n by Txdb transcriptome")
 
-#ggsave(file='../images/coverage.png',p, width = 1920/72, height = 1080/72, dpi = 72)
+ggsave(file='../images/coverage.png',p, width = 1920/72, height = 1080/72, dpi = 72)
 
 
 # Read eprint
@@ -162,5 +162,6 @@ sp <- ggscatter(cor_dt, x = "log2_mean_read_count", y = "peaks_per_gene",
                 conf.int = TRUE # Add confidence interval
 )
 # Add correlation coefficient
-sp + stat_cor(method = "pearson", label.x = 9, label.y = 100)
+sp + stat_cor(method = "pearson", label.x = 9, label.y = 100) +
+  ggtitle("Eprint peaks mean read count per gene ")
 
