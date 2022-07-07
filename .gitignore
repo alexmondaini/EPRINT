@@ -1,5 +1,6 @@
 files/
 data/
+src/
 *.html
 *.Rmd
 *.css
