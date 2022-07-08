@@ -6,11 +6,12 @@ library(regioneR)
 library(plotly)
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 library(hrbrthemes)
+library(ggplot2)
 ####
-setwd('/my_dir/R_eprint_project/files/')
+setwd('/my_dir/EPRINT/')
 
 # Read eclip
-temp = list.files(pattern="*.bed.gz")
+temp = list.files(path='data/eclip-accessions',pattern="*.bed.gz",full.names = T)
 myfiles = lapply(temp, function(x) fread(x,
                                          sep="\t",
                                          header=F,
@@ -18,14 +19,12 @@ myfiles = lapply(temp, function(x) fread(x,
                                                         rep('character',3),rep('numeric',4)),
                                          col.names = c("chr", "start", "end", "name", "score",
                                                        "strand","signalValue","pValue","qValue","peak_point_source")))
-names(myfiles) <- make.names(gsub("*.bed.gz$", "", temp))
+names(myfiles) <- gsub("*.bed.gz$","",basename(temp))
 # get only hg19 IDR files
 sbset = lapply(myfiles, function(x) grepl('IDR',unique(x$name)))
 myfiles = myfiles[unlist(sbset)]
 # filter chromosome names
-validchrname = c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",  
-                 "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", 
-                 "chr20", "chr21", "chr22", "chrX", "chrY")
+validchrname = c(paste0("chr",seq(22)),"chrX","chrY")
 
 lapply(myfiles,function(x) setkey(x,chr))
 myfiles <- lapply(myfiles, function(x) x[chr%in%validchrname])
@@ -47,7 +46,7 @@ myfiles <- GRangesList(myfiles)
 
 #################################################################
 # Read eprint peaks
-pk.df = fread("fus.merge.peak.counts.inputfiltered.fusvsneg.deseq.sfglobal.batch1.wald.txt", sep="\t", header=T, quote="")
+pk.df = fread("data/fus-eprint/fus.merge.peak.counts.inputfiltered.fusvsneg.deseq.sfglobal.batch1.wald.txt", sep="\t", header=T, quote="")
 # drop last column, it's a duplicate of name
 pk.df <- pk.df[,-32]
 # paste chr in front of geneChr
@@ -103,7 +102,7 @@ pk <- extend_grange(pk,50)
 ##################################################################################################
 
 # Read gene set
-gene.set = fread("fus.input.gene.counts.txt",sep = '\t',header = T,quote = "")
+gene.set = fread("data/fus-eprint/fus.input.gene.counts.txt",sep = '\t',header = T,quote = "")
 setnames(gene.set,"GeneID","geneId")
 
 # median for input
@@ -155,9 +154,6 @@ end.time = Sys.time()
 end.time - start.time
 
 
-saveRDS(d,file = 'd.rds')
-# load d
-d = readRDS(file = 'd.rds')
 ## Read d
 d[1:5,1:5]
 # save number of peaks
@@ -176,8 +172,7 @@ d = d[2:13]
 d[,cm_pct:=full_pct-cumsum(c(0,pct[-length(pct)]))]
 
 
-##########################################################################
-
+#########################################################################
 # Count Overlaps
 result <- as.data.table(countOverlaps(pk,myfiles))
 # change column name
@@ -204,10 +199,33 @@ dat <- rbind(result,d,fill=T)
 dat[,peaks:=rep(factor(c('eprint_peaks','mean_random_peaks')),times = c(nrow(result),nrow(d)))]
 
 # \u2265 for greater than or equal
-
 ggplot(data = dat,aes(x=factor(overlaps),y=cm_pct)) + geom_col(aes(fill=peaks),position = 'dodge2',colour="NA") +
   geom_errorbar(aes(ymin=cm_pct-pct_sd,ymax=cm_pct+pct_sd),
                 position=position_dodge2(padding = 0.5)) +
   scale_x_discrete(name="overlaps",breaks=seq_along(1:12),labels=paste0('\u2265',seq_along(1:12))) +
   scale_fill_ft() +
   theme_classic()
+
+
+# produce dotplot
+ggplot(mapping = aes(x=factor(overlaps),y=cm_pct),data = dat) +
+  geom_dotplot(aes(fill=peaks),colour="NA",binaxis = "y", stackdir = "centerwhole",binwidth = 1.2) +
+  scale_x_discrete(name="overlaps",breaks=seq_along(1:12),labels=paste0('\u2265',seq_along(1:12))) +
+  theme_classic(base_size = 13) + 
+  scale_fill_grey(labels=c("eprint_peaks"="eprint\npeaks","mean_random_peaks"="random\npeaks")) +
+  labs(y='cumulative percentage',fill=NULL) +
+  theme(legend.position = "top",
+        legend.key.size = unit(1,'cm'),
+        )
+
+# the best one with poinrange
+ggplot(mapping = aes(x=factor(overlaps),y=cm_pct,colour=peaks),data = dat) +
+  geom_pointrange(aes(ymin=cm_pct-pct_sd-.5,ymax=cm_pct+pct_sd+.5),fatten = 4.3) +
+  scale_x_discrete(name="overlaps",breaks=seq_along(1:12),labels=paste0('\u2265',seq_along(1:12))) +
+  theme_classic(base_size = 13) + 
+  scale_colour_grey(labels=c("eprint_peaks"="eprint\npeaks","mean_random_peaks"="random\npeaks")) +
+  labs(y='cumulative percentage',fill=NULL) +
+  theme(legend.position = "top",
+        legend.key.size = unit(1,'cm'),
+  )+
+  guides(color = guide_legend(override.aes=list(linetype = c("blank", "solid")))) 
