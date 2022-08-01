@@ -46,7 +46,7 @@ genome(variants) <- "hg19"
 variants
 
 # Load peaks
-pk.df = fread("fus.merge.peak.counts.inputfiltered.fusvsneg.deseq.sfglobal.batch1.wald.txt", sep="\t", header=T, quote="")
+pk.df = fread("EPRINT/data/fus-eprint/fus.merge.peak.counts.inputfiltered.fusvsneg.deseq.sfglobal.batch1.wald.txt", sep="\t", header=T, quote="")
 # drop last column, it's a duplicate of name
 pk.df <- pk.df[,-32]
 # paste chr in front of geneChr

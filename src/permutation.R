@@ -57,25 +57,28 @@ pk.df[geneChr=='chr23',geneChr:='chrX']
 pk.df[,geneStrand := fcase(geneStrand==1,'+',
                            geneStrand==2,'-')]
 
+# Over the unique geneIDs
+
 # tt = unique(pk.df,by='geneId')
 # tt[,count_median:=.(rowMedians(as.matrix(.SD))),.SDcols=c("sample5","sample6","sample7","sample8")]
 
 # Median
 pk.df[,count_median:=.(rowMedians(as.matrix(.SD))),.SDcols=c("sample5","sample6","sample7","sample8")]
-qt = pk.df[,quantile(count_median)]
-qt
+qt.pk = pk.df[,quantile(count_median)]
+qt.pk
 
-pk.df[,qt:=
-           fcase(count_median>=qt[1] & count_median<=qt[2],'A',
-                 count_median>qt[2] & count_median<=qt[3],'B',
-                 count_median>qt[3] & count_median<=qt[4],'C',
-                 count_median>qt[4],'D'
+pk.df[,qt.pk:=
+           fcase(count_median>=qt.pk[1] & count_median<=qt.pk[2],'A',
+                 count_median>qt.pk[2] & count_median<=qt.pk[3],'B',
+                 count_median>qt.pk[3] & count_median<=qt.pk[4],'C',
+                 count_median>qt.pk[4],'D'
            )
 ]
 
-# frequency of quantiles
-fq = pk.df[,.(.N),by=qt]
-frq = fq[,N]
+# frequency of peak quantiles
+fq.pk = pk.df[,.(.N),by=qt.pk]
+setkey(fq.pk,qt.pk)
+frq = fq.pk[,N]
 frq
 
 # create peak grange
@@ -108,15 +111,25 @@ setnames(gene.set,"GeneID","geneId")
 # median for input
 gene.set[,count_median:=.(rowMedians(as.matrix(.SD))),.SDcols=c("sample5","sample6","sample7","sample8")]
 
-gene.set[,qt:=
-        fcase(count_median>qt[1] & count_median<=qt[2],'A',
-              count_median>qt[2] & count_median<=qt[3],'B',
-              count_median>qt[3] & count_median<=qt[4],'C',
-              count_median>qt[4],'D'
+# qt.gene = gene.set[,quantile(count_median)]
+# 
+# # frequency of gene quantiles
+# fq.gene = gene.set[,.(.N),by=qt.gene]
+# setkey(fq.gene,qt.pk)
+# frq.gene = fq.gene[,N]
+# frq.gene
+
+gene.set[,qt.pk:=
+        fcase(count_median>qt.pk[1] & count_median<=qt.pk[2],'A',
+              count_median>qt.pk[2] & count_median<=qt.pk[3],'B',
+              count_median>qt.pk[3] & count_median<=qt.pk[4],'C',
+              count_median>qt.pk[4],'D'
         )
 ]
 
-dt = gene.set[!is.na(qt)]
+# get only genes that are present in peaks
+dt = gene.set[gene.set$geneId %in% pk.df$geneId,]
+dt = dt[!is.na(qt.pk)]
 
 # Is there any gene coordinate with less than 100bp ?
 i = which(dt[,End-Start<100])
@@ -128,10 +141,10 @@ d = data.table()
 
 start.time = Sys.time()
 for (i in 1:1000) {
-caseA = sample(dt[qt=='A',geneId],size = frq[1],replace = T)
-caseB = sample(dt[qt=='B',geneId],size = frq[2],replace = T)
-caseC = sample(dt[qt=='C',geneId],size = frq[3],replace = T)
-caseD = sample(dt[qt=='D',geneId],size = frq[4],replace = T)
+caseA = sample(dt[qt.pk=='A',geneId],size = frq[1],replace = T)
+caseB = sample(dt[qt.pk=='B',geneId],size = frq[2],replace = T)
+caseC = sample(dt[qt.pk=='C',geneId],size = frq[3],replace = T)
+caseD = sample(dt[qt.pk=='D',geneId],size = frq[4],replace = T)
 allcases = c(caseA,caseB,caseC,caseD)
 # match
 rdt = dt[match(allcases,dt[,geneId])]
@@ -218,9 +231,10 @@ ggplot(mapping = aes(x=factor(overlaps),y=cm_pct),data = dat) +
         legend.key.size = unit(1,'cm'),
         )
 
+
 # the best one with poinrange
 ggplot(mapping = aes(x=factor(overlaps),y=cm_pct,colour=peaks),data = dat) +
-  geom_pointrange(aes(ymin=cm_pct-pct_sd-.5,ymax=cm_pct+pct_sd+.5),fatten = 4.3) +
+  geom_pointrange(aes(ymin=cm_pct-pct_sd-.5,ymax=cm_pct+pct_sd+.5),fatten = 5) +
   scale_x_discrete(name="overlaps",breaks=seq_along(1:12),labels=paste0('\u2265',seq_along(1:12))) +
   theme_classic(base_size = 13) + 
   scale_colour_grey(labels=c("eprint_peaks"="eprint\npeaks","mean_random_peaks"="random\npeaks")) +
